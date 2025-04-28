@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hangman / Spelling Bee Game</title>
+    <style>
+        /* Basic styling for the body */
+        body {
+            font-family: sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start; /* Align top for longer content */
+            min-height: 100vh;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        /* Container for the game elements */
+        .game-container {
+            background-color: #fff;
+            padding: 20px 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            max-width: 600px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        /* Game title */
+        h1#game-title { /* Added ID */
+            color: #333;
+            margin-top: 0;
+            margin-bottom: 10px; /* Reduced margin */
+            font-size: 1.5em;
+        }
+
+         /* Score Display Area */
+         #score-display {
+            font-size: 1em;
+            color: #555;
+            margin-bottom: 20px;
+            font-weight: bold;
+         }
+
+        /* Mode Selection Area */
+        #mode-selection {
+            margin-bottom: 25px;
+            padding-top: 15px; /* Added padding top */
+            padding-bottom: 15px;
+            border-top: 1px solid #eee; /* Added top border */
+            border-bottom: 1px solid #eee;
+        }
+        #mode-selection p {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #555;
+        }
+        #mode-selection button {
+            font-size: 1em;
+            padding: 10px 15px;
+            margin: 0 5px;
+            cursor: pointer;
+            border: 1px solid #007bff;
+            border-radius: 5px;
+            background-color: #e7f3ff; /* Light blue */
+            color: #007bff;
+            transition: background-color 0.2s ease, color 0.2s ease;
+        }
+        #mode-selection button:hover {
+            background-color: #007bff;
+            color: white;
+        }
+         #mode-selection button.selected {
+             background-color: #0056b3;
+             color: white;
+             border-color: #0056b3;
+         }
+
+
+        /* Game Area (initially hidden) */
+        #game-area {
+            display: none; /* Hidden until mode is selected */
+        }
+
+
+        /* Styling for the clue section */
+        .clue-section p:first-child {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #555;
+        }
+
+        /* Styling for the clue text itself */
+        #clue-text {
+            font-size: 1.1em;
+            margin-bottom: 20px;
+            line-height: 1.5;
+            color: #222;
+            background-color: #e9e9e9;
+            padding: 10px;
+            border-radius: 4px;
+            word-wrap: break-word;
+            text-align: left;
+        }
+
+        /* Styling for the hangman canvas */
+        #hangman-canvas {
+            border: 1px solid #ccc;
+            margin-bottom: 20px;
+            max-width: 100%;
+            height: auto;
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        /* Styling for the word display section */
+        .word-display-section p {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #555;
+        }
+
+        /* Styling for the area displaying the hidden word */
+        .word-display {
+            min-height: 30px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 10px 15px;
+            font-size: 1.8em;
+            margin-bottom: 20px;
+            background-color: #f8f8f8;
+            word-wrap: break-word;
+            text-align: center;
+            letter-spacing: 5px;
+            font-family: monospace;
+        }
+
+        /* Container for the virtual keyboard */
+        .keyboard {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        /* Styling for each row of keys */
+        .keyboard-row {
+            margin-bottom: 5px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        /* Styling for individual keyboard buttons */
+        .keyboard button {
+            font-size: 1em;
+            padding: 8px 12px;
+            margin: 3px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background-color: #f9f9f9;
+            cursor: pointer;
+            min-width: 35px;
+            transition: background-color 0.2s ease, transform 0.1s ease;
+            flex-grow: 1;
+            flex-basis: 35px;
+            text-align: center;
+        }
+
+        .keyboard button:hover:not(:disabled) {
+            background-color: #e0e0e0;
+        }
+
+        .keyboard button:active:not(:disabled) {
+            background-color: #d0d0d0;
+            transform: scale(0.95);
+        }
+
+        /* Styling for the message area */
+        .message-section {
+            margin-top: 15px;
+            min-height: 50px;
+        }
+
+        /* Default styling for messages */
+        #message-display {
+            font-weight: bold;
+            font-size: 1.1em;
+            min-height: 25px;
+            padding: 8px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            display: inline-block;
+        }
+
+        /* Styling for win messages */
+        .message-win {
+            color: #155724;
+            background-color: #d4edda;
+        }
+
+        /* Styling for lose messages */
+        .message-lose {
+            color: #721c24;
+            background-color: #f8d7da;
+        }
+         /* Styling for info messages */
+        .message-info {
+            color: #0c5460;
+            background-color: #d1ecf1;
+        }
+        /* Styling for incorrect guess messages (Spelling Bee specific) */
+        .message-incorrect {
+             color: #721c24; /* Dark red */
+             background-color: #f8d7da; /* Light red */
+         }
+
+
+        /* Styling for Next Clue and Play Again buttons */
+        #next-clue-button, #play-again-button, #change-mode-button { /* Added Change Mode to selector */
+            font-size: 1em;
+            padding: 10px 15px;
+            margin-top: 10px;
+            margin-left: 5px;
+            margin-right: 5px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background-color: #007bff;
+            color: white;
+            transition: background-color 0.2s ease, transform 0.1s ease;
+        }
+
+        #next-clue-button:hover, #play-again-button:hover, #change-mode-button:hover { /* Added Change Mode to selector */
+            background-color: #0056b3;
+        }
+        #next-clue-button:active, #play-again-button:active, #change-mode-button:active { /* Added Change Mode to selector */
+            transform: scale(0.98);
+        }
+
+        /* Style disabled keyboard buttons */
+        .keyboard button:disabled {
+            background-color: #e9ecef;
+            color: #aaa;
+            cursor: not-allowed;
+            opacity: 0.65;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1 id="game-title">Word Game</h1>
+
+        <div id="score-display">Score: 0 Wins / 0 Played</div>
+
+        <div id="mode-selection">
+            <p>Choose Game Mode:</p>
+            <button id="mode-hangman">Hangman</button>
+            <button id="mode-spellingbee">Spelling Bee</button>
+        </div>
+
+        <div id="game-area">
+            <div class="clue-section">
+                <p>Clue:</p>
+                <p id="clue-text">Loading clue...</p>
+            </div>
+
+            <canvas id="hangman-canvas" width="300" height="300"></canvas>
+
+            <div class="word-display-section">
+                <p>Word:</p>
+                <div id="word-display" class="word-display"></div>
+            </div>
+
+            <div id="keyboard" class="keyboard">
+                </div>
+
+            <div class="message-section">
+                <p id="message-display"></p>
+                <button id="next-clue-button" style="display: none;">Next Clue</button>
+                <button id="play-again-button" style="display: none;">Play Again</button>
+                <button id="change-mode-button" style="display: none;">Change Mode</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Wait for the HTML document to be fully loaded before running the script
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DOM Elements ---
+            const gameTitleElement = document.getElementById('game-title'); // Get title element
+            const scoreDisplayElement = document.getElementById('score-display');
+            const modeSelectionDiv = document.getElementById('mode-selection');
+            const gameAreaDiv = document.getElementById('game-area');
+            const hangmanModeButton = document.getElementById('mode-hangman');
+            const spellingBeeModeButton = document.getElementById('mode-spellingbee');
+            const clueTextElement = document.getElementById('clue-text');
+            const canvas = document.getElementById('hangman-canvas');
+            const ctx = canvas.getContext('2d');
+            const wordDisplayElement = document.getElementById('word-display');
+            const keyboardElement = document.getElementById('keyboard');
+            const messageDisplayElement = document.getElementById('message-display');
+            const nextClueButton = document.getElementById('next-clue-button');
+            const playAgainButton = document.getElementById('play-again-button');
+            const changeModeButton = document.getElementById('change-mode-button');
+
+            // --- Game State Variables ---
+            let allClues = [];
+            let currentClue = null;
+            let currentAnswer = '';
+            let incorrectGuesses = 0;
+            const maxIncorrectGuesses = 5;
+            let guessedLetters = new Set();
+            let displayedWord = [];
+            let gameActive = false;
+            let usedClueIndices = new Set();
+            let gameMode = null;
+            let currentLetterIndex = 0;
+            let wins = 0;
+            let totalGamesPlayed = 0;
+
+            // --- Constants ---
+            const keyboardLayout = ["QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM"];
+            const initialGameTitle = "Word Game"; // Store initial title
+
+            // --- Embedded Clue Data ---
+            const clueData = `
+Is it true that humans are naturally born with the (a)________________ to learn a language?:-ability;-1.0
+My college in Japan offers a six-month study (a)________________ program in California.:-abroad;-1.0
+The airline company is taking steps to ensure the (s)________________ of its passengers.:-safety;-1.0
+Please read the product (d)________________ carefully before using it.:-description;-1.0
+Regular exercise is (b)________________ for maintaining good health.:-beneficial;-1.0
+The library provides access to a vast (c)________________ of books and resources.:-collection;-1.0
+He made a conscious (e)________________ to improve his study habits.:-effort;-1.0
+Global warming is having a significant (i)________________ on the environment.:-impact;-1.0
+The museum features an impressive (d)________________ of modern art.:-display;-1.0
+Effective communication is (e)________________ for teamwork.:-essential;-1.0
+The company decided to (e)________________ its operations to Asia.:-expand;-1.0
+Lack of sleep can negatively (a)________________ your concentration.:-affect;-1.0
+We need to find a practical (s)________________ to this problem.:-solution;-1.0
+The government implemented new policies to protect the (e)________________.:-environment;-1.0
+She showed great (c)________________ in facing the challenges.:-courage;-1.0
+`;
+
+            // --- Functions ---
+
+            // Initialize the game setup
+            function initialize() {
+                parseClues();
+                createKeyboard();
+                setupModeSelection();
+                updateScoreDisplay();
+                gameTitleElement.textContent = initialGameTitle; // Set initial title
+            }
+
+            // Setup listeners for mode selection buttons
+            function setupModeSelection() {
+                hangmanModeButton.addEventListener('click', () => selectMode('hangman'));
+                spellingBeeModeButton.addEventListener('click', () => selectMode('spellingbee'));
+                changeModeButton.addEventListener('click', resetToModeSelection);
+            }
+
+            // Handle mode selection
+            function selectMode(mode) {
+                gameMode = mode;
+                // Update game title based on selected mode
+                gameTitleElement.textContent = (mode === 'hangman') ? 'Hangman' : 'Spelling Bee';
+                modeSelectionDiv.style.display = 'none';
+                gameAreaDiv.style.display = 'block';
+                // Update button styles
+                hangmanModeButton.classList.remove('selected');
+                spellingBeeModeButton.classList.remove('selected');
+                if (mode === 'hangman') hangmanModeButton.classList.add('selected');
+                else spellingBeeModeButton.classList.add('selected');
+                startGame();
+            }
+
+            // Reset UI to show mode selection again
+            function resetToModeSelection() {
+                gameActive = false;
+                gameAreaDiv.style.display = 'none';
+                modeSelectionDiv.style.display = 'block';
+                gameTitleElement.textContent = initialGameTitle; // Reset title
+                messageDisplayElement.textContent = '';
+                messageDisplayElement.className = '';
+                nextClueButton.style.display = 'none';
+                playAgainButton.style.display = 'none';
+                changeModeButton.style.display = 'none';
+                usedClueIndices.clear();
+            }
+
+
+            // Parse the embedded clue data string
+            function parseClues() {
+                allClues = clueData.split('\n').map(l => l.trim()).filter(l => l.includes(':-') && l.includes(';-'))
+                    .map(l => {
+                        const p = l.split(':-');
+                        return { sentence: p[0].trim(), answer: p[1].split(';')[0].trim() };
+                    }).filter(c => c.sentence && c.answer);
+                console.log("Parsed Clues:", allClues);
+                if (allClues.length === 0) {
+                    modeSelectionDiv.innerHTML = "<p>Error: No valid clues found.</p>";
+                }
+            }
+
+            // Create the virtual keyboard dynamically
+            function createKeyboard() {
+                keyboardElement.innerHTML = '';
+                keyboardLayout.forEach(row => {
+                    const rowDiv = document.createElement('div');
+                    rowDiv.className = 'keyboard-row';
+                    row.split('').forEach(key => {
+                        const button = document.createElement('button');
+                        button.textContent = key;
+                        button.dataset.key = key;
+                        button.addEventListener('click', handleKeyPress);
+                        rowDiv.appendChild(button);
+                    });
+                    keyboardElement.appendChild(rowDiv);
+                });
+            }
+
+            // Handle clicks on the virtual keyboard buttons
+            function handleKeyPress(event) {
+                if (!gameActive) return;
+                const button = event.target;
+                const key = button.dataset.key.toLowerCase();
+                if (gameMode === 'hangman') {
+                    handleHangmanGuess(button, key);
+                } else if (gameMode === 'spellingbee') {
+                    handleSpellingBeeGuess(button, key);
+                }
+            }
+
+            // Handle guess logic for Hangman mode
+            function handleHangmanGuess(button, key) {
+                if (guessedLetters.has(key)) {
+                    displayMessage(`You already guessed "${key.toUpperCase()}".`, 'info');
+                    return;
+                }
+                guessedLetters.add(key);
+                button.disabled = true;
+                if (currentAnswer.includes(key)) {
+                    let changed = false;
+                    for (let i = 0; i < currentAnswer.length; i++) {
+                        if (currentAnswer[i] === key) {
+                            displayedWord[i] = currentAnswer[i].toUpperCase();
+                            changed = true;
+                        }
+                    }
+                    if(changed) {
+                        updateWordDisplay();
+                        clearMessage();
+                        checkWinCondition();
+                    }
+                } else {
+                    incorrectGuesses++;
+                    drawHangmanPart(incorrectGuesses);
+                    clearMessage();
+                    checkLoseCondition();
+                }
+            }
+
+            // Handle guess logic for Spelling Bee mode
+            function handleSpellingBeeGuess(button, key) {
+                const expectedLetter = currentAnswer[currentLetterIndex];
+                if (key === expectedLetter) {
+                    displayedWord[currentLetterIndex] = key.toUpperCase();
+                    currentLetterIndex++;
+                    updateWordDisplay();
+                    // button.disabled = true; // Keep enabled for repeats
+                    clearMessage();
+                    checkWinCondition();
+                } else {
+                    incorrectGuesses++;
+                    drawHangmanPart(incorrectGuesses);
+                    displayMessage(`Incorrect letter or sequence.`, 'incorrect');
+                    checkLoseCondition();
+                }
+            }
+
+            // Update the display showing the word
+            function updateWordDisplay() {
+                wordDisplayElement.textContent = displayedWord.join('');
+            }
+
+            // Update the score display element
+            function updateScoreDisplay() {
+                scoreDisplayElement.textContent = `Score: ${wins} Wins / ${totalGamesPlayed} Played`;
+            }
+
+            // Start a new game round
+            function startGame() {
+                if (allClues.length === 0) return;
+                if (usedClueIndices.size >= allClues.length) {
+                    usedClueIndices.clear();
+                }
+                loadNextClue();
+            }
+
+            // Load a new random, unused clue
+            function loadNextClue() {
+                gameActive = true;
+                incorrectGuesses = 0;
+                guessedLetters.clear();
+                currentLetterIndex = 0;
+                currentClue = getRandomClue();
+
+                if (!currentClue) {
+                    // All clues completed handling
+                    clueTextElement.textContent = "Congratulations! You've completed all clues.";
+                    wordDisplayElement.textContent = '';
+                    messageDisplayElement.textContent = '';
+                    disableAllKeyboardButtons();
+                    playAgainButton.style.display = 'inline-block';
+                    nextClueButton.style.display = 'none';
+                    changeModeButton.style.display = 'inline-block';
+                    clearCanvas();
+                    drawHangmanBase();
+                    gameActive = false;
+                    return;
+                }
+
+                currentAnswer = currentClue.answer.toLowerCase();
+                clueTextElement.textContent = currentClue.sentence;
+                displayedWord = Array(currentAnswer.length).fill('_');
+                updateWordDisplay();
+                clearCanvas();
+                drawHangmanBase();
+                clearMessage();
+                enableAllKeyboardButtons();
+                nextClueButton.style.display = 'none';
+                playAgainButton.style.display = 'none';
+                changeModeButton.style.display = 'none';
+            }
+
+            // Get a random clue that hasn't been used yet
+            function getRandomClue() {
+                if (usedClueIndices.size >= allClues.length) return null;
+                let randomIndex;
+                do { randomIndex = Math.floor(Math.random() * allClues.length); }
+                while (usedClueIndices.has(randomIndex));
+                usedClueIndices.add(randomIndex);
+                return allClues[randomIndex];
+            }
+
+            // Check if the player has won
+            function checkWinCondition() {
+                let won = false;
+                if (gameMode === 'hangman' && !displayedWord.includes('_')) {
+                    won = true;
+                } else if (gameMode === 'spellingbee' && currentLetterIndex === currentAnswer.length) {
+                    won = true;
+                }
+
+                if (won) {
+                    gameActive = false;
+                    wins++;
+                    totalGamesPlayed++;
+                    updateScoreDisplay();
+                    disableAllKeyboardButtons();
+                    let finalMsg = `You got it! The word is "${currentAnswer.toUpperCase()}".`;
+                    if (usedClueIndices.size >= allClues.length) {
+                         finalMsg = `You finished all clues! The word was "${currentAnswer.toUpperCase()}".`;
+                         playAgainButton.style.display = 'inline-block';
+                         changeModeButton.style.display = 'inline-block';
+                    } else {
+                         nextClueButton.style.display = 'inline-block';
+                         changeModeButton.style.display = 'inline-block';
+                    }
+                     displayMessage(finalMsg, 'win');
+                }
+            }
+
+            // Check if the player has lost
+            function checkLoseCondition() {
+                if (incorrectGuesses >= maxIncorrectGuesses) {
+                    gameActive = false;
+                    totalGamesPlayed++;
+                    updateScoreDisplay();
+                    disableAllKeyboardButtons();
+                    displayMessage(`Game Over! The word was "${currentAnswer.toUpperCase()}".`, 'lose');
+                    wordDisplayElement.textContent = currentAnswer.toUpperCase();
+                    playAgainButton.style.display = 'inline-block';
+                    changeModeButton.style.display = 'inline-block';
+                    for (let i = incorrectGuesses + 1; i <= 6; i++) { drawHangmanPart(i); }
+                } else if (gameMode === 'hangman'){
+                     displayMessage(`Incorrect. (${incorrectGuesses}/${maxIncorrectGuesses} wrong)`, 'info');
+                }
+                 // Spelling Bee incorrect message handled in its guess function
+            }
+
+            // --- Canvas Drawing Functions --- (Identical)
+            function clearCanvas() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
+            function drawHangmanBase() {
+                ctx.strokeStyle = '#333'; ctx.lineWidth = 3;
+                ctx.beginPath(); ctx.moveTo(30, canvas.height - 30); ctx.lineTo(canvas.width - 30, canvas.height - 30); ctx.stroke(); // Base
+                ctx.beginPath(); ctx.moveTo(60, canvas.height - 30); ctx.lineTo(60, 30); ctx.stroke(); // Pole
+                ctx.beginPath(); ctx.moveTo(60, 30); ctx.lineTo(180, 30); ctx.stroke(); // Beam
+                ctx.beginPath(); ctx.moveTo(180, 30); ctx.lineTo(180, 70); ctx.stroke(); // Rope
+            }
+            function drawHangmanPart(partIndex) {
+                ctx.strokeStyle = '#D9534F'; ctx.lineWidth = 3;
+                switch (partIndex) {
+                    case 1: ctx.beginPath(); ctx.arc(180, 90, 20, 0, Math.PI * 2); ctx.stroke(); break; // Head
+                    case 2: ctx.beginPath(); ctx.moveTo(180, 110); ctx.lineTo(180, 180); ctx.stroke(); break; // Body
+                    case 3: ctx.beginPath(); ctx.moveTo(180, 130); ctx.lineTo(140, 160); ctx.stroke(); break; // Left Arm
+                    case 4: ctx.beginPath(); ctx.moveTo(180, 130); ctx.lineTo(220, 160); ctx.stroke(); break; // Right Arm
+                    case 5: ctx.beginPath(); ctx.moveTo(180, 180); ctx.lineTo(150, 230); ctx.stroke(); break; // Left Leg (Game Over)
+                    case 6: ctx.beginPath(); ctx.moveTo(180, 180); ctx.lineTo(210, 230); ctx.stroke(); break; // Right Leg
+                }
+            }
+
+            // --- Utility Functions ---
+            function displayMessage(msg, type = '') {
+                messageDisplayElement.textContent = msg;
+                messageDisplayElement.className = '';
+                if (type) messageDisplayElement.classList.add(`message-${type}`);
+            }
+            function clearMessage() { displayMessage(''); }
+            function disableAllKeyboardButtons() { keyboardElement.querySelectorAll('button').forEach(b => b.disabled = true); }
+            function enableAllKeyboardButtons() { keyboardElement.querySelectorAll('button').forEach(b => b.disabled = false); }
+
+            // --- Event Listeners ---
+            nextClueButton.addEventListener('click', loadNextClue);
+            playAgainButton.addEventListener('click', () => {
+                 usedClueIndices.clear();
+                 startGame();
+            });
+            // Change Mode listener set in initialize()
+
+            // --- Initialization ---
+            initialize(); // Start the setup
+
+        });
+    </script>
+</body>
+</html>
