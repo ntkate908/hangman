@@ -293,7 +293,7 @@
         // Wait for the HTML document to be fully loaded before running the script
         document.addEventListener('DOMContentLoaded', () => {
             // --- DOM Elements ---
-            const gameTitleElement = document.getElementById('game-title'); // Get title element
+            const gameTitleElement = document.getElementById('game-title');
             const scoreDisplayElement = document.getElementById('score-display');
             const modeSelectionDiv = document.getElementById('mode-selection');
             const gameAreaDiv = document.getElementById('game-area');
@@ -326,37 +326,70 @@
 
             // --- Constants ---
             const keyboardLayout = ["QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM"];
-            const initialGameTitle = "Word Game"; // Store initial title
+            const initialGameTitle = "Word Game";
+            const clueFileName = "hangman.txt"; // Name of the clue file
 
-            // --- Embedded Clue Data ---
-            const clueData = `
-Is it true that humans are naturally born with the (a)________________ to learn a language?:-ability;-1.0
-My college in Japan offers a six-month study (a)________________ program in California.:-abroad;-1.0
-The airline company is taking steps to ensure the (s)________________ of its passengers.:-safety;-1.0
-Please read the product (d)________________ carefully before using it.:-description;-1.0
-Regular exercise is (b)________________ for maintaining good health.:-beneficial;-1.0
-The library provides access to a vast (c)________________ of books and resources.:-collection;-1.0
-He made a conscious (e)________________ to improve his study habits.:-effort;-1.0
-Global warming is having a significant (i)________________ on the environment.:-impact;-1.0
-The museum features an impressive (d)________________ of modern art.:-display;-1.0
-Effective communication is (e)________________ for teamwork.:-essential;-1.0
-The company decided to (e)________________ its operations to Asia.:-expand;-1.0
-Lack of sleep can negatively (a)________________ your concentration.:-affect;-1.0
-We need to find a practical (s)________________ to this problem.:-solution;-1.0
-The government implemented new policies to protect the (e)________________.:-environment;-1.0
-She showed great (c)________________ in facing the challenges.:-courage;-1.0
-`;
+            // --- Removed Embedded Clue Data ---
+            // const clueData = `...`; // This is now removed
 
             // --- Functions ---
 
-            // Initialize the game setup
-            function initialize() {
-                parseClues();
+            // Initialize the game setup: fetch clues, create keyboard, set up mode selection
+            async function initialize() {
+                // Fetch clues first
+                const cluesLoaded = await fetchClues();
+                if (!cluesLoaded) {
+                    // Handle error if clues couldn't be loaded
+                    modeSelectionDiv.innerHTML = `<p>Error: Could not load clues from ${clueFileName}. Please ensure the file exists and is accessible.</p>`;
+                    return; // Stop initialization
+                }
+
+                // Proceed with setup only if clues loaded
                 createKeyboard();
                 setupModeSelection();
                 updateScoreDisplay();
-                gameTitleElement.textContent = initialGameTitle; // Set initial title
+                gameTitleElement.textContent = initialGameTitle;
             }
+
+            // Fetch and parse clues from the external text file
+            async function fetchClues() {
+                try {
+                    const response = await fetch(clueFileName); // Fetch the file
+                    if (!response.ok) {
+                        // Throw an error if the file fetch failed (e.g., 404 Not Found)
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    const text = await response.text(); // Get the text content
+                    parseClues(text); // Parse the fetched text
+                    return true; // Indicate success
+                } catch (error) {
+                    console.error(`Error fetching or parsing ${clueFileName}:`, error);
+                    return false; // Indicate failure
+                }
+            }
+
+            // Parse the clue text (now takes text as input)
+            function parseClues(text) {
+                allClues = text
+                    .split('\n') // Split into lines
+                    .map(l => l.trim()) // Trim whitespace
+                    .filter(l => l.includes(':-') && l.includes(';-')) // Basic format check
+                    .map(l => {
+                        const p = l.split(':-'); // Split sentence from answer part
+                        return { sentence: p[0].trim(), answer: p[1].split(';')[0].trim() }; // Extract sentence and answer
+                    })
+                    .filter(c => c.sentence && c.answer); // Ensure both parts exist
+
+                console.log("Parsed Clues:", allClues); // For debugging
+                if (allClues.length === 0) {
+                    // This case handles if the file is empty or has no valid lines
+                    console.warn(`${clueFileName} is empty or contains no valid clues.`);
+                    // Display a message to the user if needed, e.g., in modeSelectionDiv
+                    modeSelectionDiv.innerHTML = `<p>Warning: ${clueFileName} is empty or contains no valid clues.</p>`;
+
+                }
+            }
+
 
             // Setup listeners for mode selection buttons
             function setupModeSelection() {
@@ -367,12 +400,16 @@ She showed great (c)________________ in facing the challenges.:-courage;-1.0
 
             // Handle mode selection
             function selectMode(mode) {
+                // Check if clues are available before starting
+                 if (allClues.length === 0) {
+                    displayMessage(`Cannot start game: No clues loaded from ${clueFileName}.`, 'lose'); // Use 'lose' style for error
+                    return;
+                 }
+
                 gameMode = mode;
-                // Update game title based on selected mode
                 gameTitleElement.textContent = (mode === 'hangman') ? 'Hangman' : 'Spelling Bee';
                 modeSelectionDiv.style.display = 'none';
                 gameAreaDiv.style.display = 'block';
-                // Update button styles
                 hangmanModeButton.classList.remove('selected');
                 spellingBeeModeButton.classList.remove('selected');
                 if (mode === 'hangman') hangmanModeButton.classList.add('selected');
@@ -385,26 +422,24 @@ She showed great (c)________________ in facing the challenges.:-courage;-1.0
                 gameActive = false;
                 gameAreaDiv.style.display = 'none';
                 modeSelectionDiv.style.display = 'block';
-                gameTitleElement.textContent = initialGameTitle; // Reset title
+                gameTitleElement.textContent = initialGameTitle;
                 messageDisplayElement.textContent = '';
                 messageDisplayElement.className = '';
                 nextClueButton.style.display = 'none';
                 playAgainButton.style.display = 'none';
                 changeModeButton.style.display = 'none';
+                // Don't reset score here
                 usedClueIndices.clear();
-            }
-
-
-            // Parse the embedded clue data string
-            function parseClues() {
-                allClues = clueData.split('\n').map(l => l.trim()).filter(l => l.includes(':-') && l.includes(';-'))
-                    .map(l => {
-                        const p = l.split(':-');
-                        return { sentence: p[0].trim(), answer: p[1].split(';')[0].trim() };
-                    }).filter(c => c.sentence && c.answer);
-                console.log("Parsed Clues:", allClues);
-                if (allClues.length === 0) {
-                    modeSelectionDiv.innerHTML = "<p>Error: No valid clues found.</p>";
+                 // Re-enable mode buttons if they were disabled due to no clues
+                if (document.querySelector('#mode-selection p')?.textContent.startsWith('Warning')) {
+                    modeSelectionDiv.innerHTML = `
+                        <p>Choose Game Mode:</p>
+                        <button id="mode-hangman">Hangman</button>
+                        <button id="mode-spellingbee">Spelling Bee</button>
+                    `;
+                    // Re-attach listeners (important!)
+                    document.getElementById('mode-hangman').addEventListener('click', () => selectMode('hangman'));
+                    document.getElementById('mode-spellingbee').addEventListener('click', () => selectMode('spellingbee'));
                 }
             }
 
@@ -496,7 +531,15 @@ She showed great (c)________________ in facing the challenges.:-courage;-1.0
 
             // Start a new game round
             function startGame() {
-                if (allClues.length === 0) return;
+                 // Double check clues exist before starting round
+                 if (allClues.length === 0) {
+                    displayMessage(`Cannot start game: No clues loaded from ${clueFileName}.`, 'lose');
+                    gameActive = false;
+                    disableAllKeyboardButtons();
+                    changeModeButton.style.display = 'inline-block'; // Allow changing mode
+                    return;
+                 }
+
                 if (usedClueIndices.size >= allClues.length) {
                     usedClueIndices.clear();
                 }
@@ -541,6 +584,7 @@ She showed great (c)________________ in facing the challenges.:-courage;-1.0
 
             // Get a random clue that hasn't been used yet
             function getRandomClue() {
+                if (allClues.length === 0) return null; // Handle no clues loaded case
                 if (usedClueIndices.size >= allClues.length) return null;
                 let randomIndex;
                 do { randomIndex = Math.floor(Math.random() * allClues.length); }
@@ -635,7 +679,7 @@ She showed great (c)________________ in facing the challenges.:-courage;-1.0
             // Change Mode listener set in initialize()
 
             // --- Initialization ---
-            initialize(); // Start the setup
+            initialize(); // Start the setup process, including fetching clues
 
         });
     </script>
